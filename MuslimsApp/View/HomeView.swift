@@ -1,7 +1,12 @@
 import SwiftUI
 import Adhan
 
+// Burası BEDEN kısmı. Görüntüyü çizer.
+// DİKKAT: Başında 'struct' yazar.
 struct HomeView: View {
+    // Beyni (ViewModel) burada çağırıyoruz
+    @StateObject private var viewModel = HomeViewModel()
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -10,16 +15,14 @@ struct HomeView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 20) {
-                    // 2. ÜST BİLGİ ALANI (Tarih ve Şehir)
+                    // 2. ÜST BİLGİ ALANI
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("İstanbul, TR")
+                            Text("Ankara, TR")
                                 .font(.headline)
                                 .foregroundColor(.gray)
                             
-                            // TARİH ALANI (Miladi + Hicri)
                             HStack {
-                                // Miladi (Telefondan otomatik)
                                 Text(Date(), format: .dateTime.day().month().year())
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -27,7 +30,6 @@ struct HomeView: View {
                                 Text("|")
                                     .foregroundColor(.gray.opacity(0.5))
                                 
-                                // Hicri (Bizim Extension'dan)
                                 Text(Date().toHijriString(language: Locale.current.identifier))
                                     .font(.subheadline)
                                     .foregroundColor(.indigo)
@@ -39,8 +41,55 @@ struct HomeView: View {
                     }
                     .padding(.horizontal)
                     
-                    // 3. VAKİT KARTI (İşte burası kaybolmuştu!)
-                    PrayerCardView()
+                    // 3. VAKİT KARTI (Veriyi ViewModel'den alacak)
+                    PrayerCardView(viewModel: viewModel)
+                    
+                    
+                    // 3. --- YENİ: VAKİT LİSTESİ ---
+                    VStack(spacing: 0) {
+                        ForEach(viewModel.prayersList) { prayer in
+                            HStack {
+                                // İkon ve İsim
+                                Image(systemName: prayer.icon)
+                                    .foregroundColor(prayer.isNext ? .indigo : .gray)
+                                    .frame(width: 24)
+                                
+                                Text(LocalizedStringKey(prayer.name))
+                                    .font(.system(size: 16, weight: prayer.isNext ? .bold : .regular))
+                                    .foregroundColor(prayer.isNext ? .primary : .secondary)
+                                
+                                Spacer()
+                                
+                                // Saat
+                                Text(prayer.time)
+                                    .font(.system(size: 16, weight: prayer.isNext ? .bold : .regular))
+                                    .foregroundColor(prayer.isNext ? .indigo : .secondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        // Sıradaki vaktin arkasına hafif renk atalım
+                                        prayer.isNext ? Color.indigo.opacity(0.1) : Color.clear
+                                    )
+                                    .cornerRadius(8)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 12)
+                            
+                            // Satır arasına çizgi (Sonuncu hariç)
+                            if prayer.id != viewModel.prayersList.last?.id {
+                                Divider().padding(.leading, 50)
+                            }
+                        }
+                    }
+                    .background(Color.white) // Kart gibi beyaz zemin
+                    .cornerRadius(20)
+                    .padding(.horizontal)
+                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    
+                    
+                    
+                    
+                    
                     
                     Spacer()
                 }
@@ -50,17 +99,17 @@ struct HomeView: View {
     }
 }
 
-// --- ALT BİLEŞENLER (Kart Tasarımı) ---
-
+// KART TASARIMI
 struct PrayerCardView: View {
+    // Veriyi üstten alıyor
+    @ObservedObject var viewModel: HomeViewModel
+    
     var body: some View {
         ZStack {
-            // Kartın Arka Planı
             LinearGradient(colors: [Color.indigo, Color.purple], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .cornerRadius(20)
                 .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             
-            // Kartın Üzerindeki Desen
             HStack {
                 Spacer()
                 Image(systemName: "moon.stars.fill")
@@ -72,19 +121,20 @@ struct PrayerCardView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
             
-            // Kartın İçindeki Yazılar
             VStack(spacing: 10) {
                 Text("next_prayer_title")
                     .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                 
-                Text("İkindi")
+                // ARTIK CANLI VERİ!
+                Text(LocalizedStringKey(viewModel.nextPrayerName))
                     .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.white)
                 
                 HStack {
                     Image(systemName: "timer")
-                    Text("01:24:50")
+                    Text(viewModel.timeLeft) // <-- Artık saniye saniye akan süreyi gösterecek
+                            .contentTransition(.numericText()) // Rakamlar değişirken güzel animasyon olsun
                 }
                 .font(.title3)
                 .foregroundColor(.white.opacity(0.9))
@@ -97,10 +147,7 @@ struct PrayerCardView: View {
     }
 }
 
-
-
 #Preview {
     HomeView()
-        // Dili buradan değiştirip test edebilirsin: "tr", "en", "ar"
         .environment(\.locale, .init(identifier: "tr"))
 }

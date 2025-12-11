@@ -7,9 +7,9 @@ class PrayerManager {
     // Singleton Yapısı: Uygulamanın her yerinden tek bir noktadan ulaşmak için
     static let shared = PrayerManager()
     
-    // Şimdilik test için İstanbul'un koordinatlarını elle giriyoruz
+    // Şimdilik test için Ankara'nın koordinatlarını elle giriyoruz
     // İleride burayı kullanıcının gerçek GPS verisiyle değiştireceğiz
-    let testCoordinates = Coordinates(latitude: 41.0082, longitude: 28.9784)
+    let testCoordinates = Coordinates(latitude: 39.9334, longitude: 32.8597)
     
     func getPrayerTimes() -> PrayerTimes? {
         // 1. Hesaplama Parametreleri (Türkiye Diyanet İşleri standardı)
