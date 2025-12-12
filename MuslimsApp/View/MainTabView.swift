@@ -44,8 +44,7 @@ struct MainTabView: View {
     }
 }
 
-#Preview {
-    // Hem Türkçe hem Arapça önizleme koydum, alt alta görebilirsin
+#Preview { //ikili ön izleme 
     VStack {
         MainTabView()
             .environment(\.locale, .init(identifier: "tr"))
