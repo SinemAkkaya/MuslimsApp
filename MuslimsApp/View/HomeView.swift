@@ -99,7 +99,7 @@ struct HomeView: View {
     }
 }
 
-// KART TASARIMI
+// KART TASARIMI   (ileride farklı renklerle tasarım seçenekleri eklemeliyim şuan için mor beyz kalsın)
 struct PrayerCardView: View {
     // Veriyi üstten alıyor
     @ObservedObject var viewModel: HomeViewModel
