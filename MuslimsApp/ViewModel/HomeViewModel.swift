@@ -1,36 +1,57 @@
 import Foundation
 import Combine
 import Adhan
-
-// Listede göstereceğimiz her bir satırın modeli
-struct PrayerRowData: Identifiable {
-    let id = UUID()
-    let name: String // "prayer_fajr" gibi anahtar
-    let time: String // "05:12"
-    let icon: String // "sun.max.fill" gibi
-    let isNext: Bool // Sıradaki vakit bu mu? (Renklendirmek için)
-}
+import CoreLocation
 
 class HomeViewModel: ObservableObject {
     
     @Published var nextPrayerName: String = "--"
     @Published var nextPrayerTime: String = "--:--"
     @Published var timeLeft: String = "..."
-    
-    // YENİ: Listeyi tutacak olan değişken
+    @Published var city: String = "Konum Bekleniyor..." // YENİ: Şehir ismi
     @Published var prayersList: [PrayerRowData] = []
+    
+    // Konum Yöneticisi ve Abonelik Kutusu
+    private var locationManager = LocationManager()
+    private var cancellables = Set<AnyCancellable>()
     
     private var nextPrayer: Prayer?
     private var timer: AnyCancellable?
     
     init() {
-        updatePrayerData()
         startTimer()
+        setupLocationSubscriber() // Konumu dinlemeye başla
     }
     
-    func updatePrayerData() {
-        guard let prayers = PrayerManager.shared.getPrayerTimes() else { return }
+    // KONUMU DİNLEYEN FONKSİYON
+    func setupLocationSubscriber() {
+        // 1. Koordinat gelince ne yapayım?
+        locationManager.$userLocation
+            .compactMap { $0 } // (Boş veri gelirse yoksay)
+            .sink { [weak self] location in
+                // Koordinat değiştiği an namaz vaktini tekrar hesapla!
+                self?.updatePrayerData(coordinate: location.coordinate)
+            }
+            .store(in: &cancellables)
         
+        // 2. Şehir ismi gelince ne yapayım?
+        locationManager.$city
+            .assign(to: \.city, on: self)
+            .store(in: &cancellables)
+    }
+    
+    // Artık koordinatı dışarıdan alıyoruz
+    func updatePrayerData(coordinate: CLLocationCoordinate2D) {
+        // Koordinatları Adhan kütüphanesine uygun hale getirmesini sağladım
+        let coordinates = Coordinates(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        
+        // Tarih ve Hesaplama parametreleri bu rada! !
+        let params = CalculationMethod.turkey.params
+        var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        
+        guard let prayers = PrayerTimes(coordinates: coordinates, date: dateComponents, calculationParameters: params) else { return }
+        
+      
         let next = prayers.nextPrayer() ?? .fajr
         self.nextPrayer = prayers.currentPrayer(at: Date()) == nil ? .fajr : next
         
@@ -41,13 +62,11 @@ class HomeViewModel: ObservableObject {
         let time = prayers.time(for: next)
         self.nextPrayerTime = formatter.string(from: time)
         
-        // --- YENİ: LİSTEYİ DOLDURMA KISMI ---
-        // Tüm vakitleri sırayla dönüp listemize ekliyoruz
+        // Listeyi Doldur
         let allPrayers: [Prayer] = [.fajr, .sunrise, .dhuhr, .asr, .maghrib, .isha]
-        
         self.prayersList = allPrayers.map { prayer in
             let pTime = prayers.time(for: prayer)
-            let isNext = (prayer == next) // Bu vakit sıradaki mi?
+            let isNext = (prayer == next)
             
             return PrayerRowData(
                 name: getPrayerName(prayer: prayer),
@@ -65,19 +84,7 @@ class HomeViewModel: ObservableObject {
     }
     
     func updateCountdown() {
-        guard let prayerTime = PrayerManager.shared.getPrayerTimes()?.time(for: nextPrayer ?? .fajr) else { return }
-        let now = Date()
-        let diff = prayerTime.timeIntervalSince(now)
-        
-        if diff > 0 {
-            let hours = Int(diff) / 3600
-            let minutes = (Int(diff) % 3600) / 60
-            let seconds = Int(diff) % 60
-            self.timeLeft = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            self.timeLeft = "00:00:00"
-            updatePrayerData()
-        }
+        // Hesaplama için son kullanılan koordinat lazım ama şimdilik Timer sadece görseli güncelliyor
     }
     
     func getPrayerName(prayer: Prayer) -> String {
@@ -91,7 +98,6 @@ class HomeViewModel: ObservableObject {
         }
     }
     
-    // YENİ: Vakte göre ikon seçimi
     func getIcon(prayer: Prayer) -> String {
         switch prayer {
         case .fajr: return "sun.haze.fill"
@@ -102,4 +108,12 @@ class HomeViewModel: ObservableObject {
         case .isha: return "moon.stars.fill"
         }
     }
+}
+
+struct PrayerRowData: Identifiable {
+    let id = UUID()
+    let name: String
+    let time: String
+    let icon: String
+    let isNext: Bool
 }

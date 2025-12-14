@@ -18,7 +18,7 @@ struct HomeView: View {
                     // 2. ÜST BİLGİ ALANI
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("Ankara, TR")
+                            Text(viewModel.city)
                                 .font(.headline)
                                 .foregroundColor(.gray)
                             
@@ -126,15 +126,15 @@ struct PrayerCardView: View {
                     .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                 
-                // ARTIK CANLI VERİ!
+                //Canlı veriyi ekledim artıkk
                 Text(LocalizedStringKey(viewModel.nextPrayerName))
                     .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.white)
                 
                 HStack {
                     Image(systemName: "timer")
-                    Text(viewModel.timeLeft) // <-- Artık saniye saniye akan süreyi gösterecek
-                            .contentTransition(.numericText()) // Rakamlar değişirken güzel animasyon olsun
+                    Text(viewModel.timeLeft)
+                            .contentTransition(.numericText()) //
                 }
                 .font(.title3)
                 .foregroundColor(.white.opacity(0.9))
@@ -151,3 +151,4 @@ struct PrayerCardView: View {
     HomeView()
         .environment(\.locale, .init(identifier: "tr"))
 }
+

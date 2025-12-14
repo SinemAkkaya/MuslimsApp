@@ -1,10 +1,3 @@
-//
-//  HomeView.swift
-//  MuslimsApp
-//
-//  Created by Sinem Akkaya on 11.12.2025.
-//
-
 import SwiftUI
 
 struct SettingsView: View {
