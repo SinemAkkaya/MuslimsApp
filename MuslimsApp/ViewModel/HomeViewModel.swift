@@ -7,74 +7,86 @@ class HomeViewModel: ObservableObject {
     
     @Published var nextPrayerName: String = "--"
     @Published var nextPrayerTime: String = "--:--"
-    @Published var timeLeft: String = "..."
-    @Published var city: String = "Konum Bekleniyor..." // YENİ: Şehir ismi
+    @Published var timeLeft: String = "Hesaplanıyor..."
+    @Published var city: String = "Konum Bekleniyor..."
     @Published var prayersList: [PrayerRowData] = []
     
-    // Konum Yöneticisi ve Abonelik Kutusu
+    // Konum ve Zamanlayıcı Araçları
     private var locationManager = LocationManager()
     private var cancellables = Set<AnyCancellable>()
-    
-    private var nextPrayer: Prayer?
     private var timer: AnyCancellable?
+    
+    // Hesaplama için tarih hafızası
+    private var nextPrayerDate: Date?
     
     init() {
         startTimer()
-        setupLocationSubscriber() // Konumu dinlemeye başla
+        setupLocationSubscriber()
     }
     
-    // KONUMU DİNLEYEN FONKSİYON
     func setupLocationSubscriber() {
-        // 1. Koordinat gelince ne yapayım?
         locationManager.$userLocation
-            .compactMap { $0 } // (Boş veri gelirse yoksay)
+            .compactMap { $0 }
             .sink { [weak self] location in
-                // Koordinat değiştiği an namaz vaktini tekrar hesapla!
                 self?.updatePrayerData(coordinate: location.coordinate)
             }
             .store(in: &cancellables)
         
-        // 2. Şehir ismi gelince ne yapayım?
         locationManager.$city
             .assign(to: \.city, on: self)
             .store(in: &cancellables)
     }
     
-    // Artık koordinatı dışarıdan alıyoruz
+    
     func updatePrayerData(coordinate: CLLocationCoordinate2D) {
-        // Koordinatları Adhan kütüphanesine uygun hale getirmesini sağladım
         let coordinates = Coordinates(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        
-        // Tarih ve Hesaplama parametreleri bu rada! !
         let params = CalculationMethod.turkey.params
-        var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        let dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
         
         guard let prayers = PrayerTimes(coordinates: coordinates, date: dateComponents, calculationParameters: params) else { return }
         
-      
+        // Bir sonraki vakti bul
         let next = prayers.nextPrayer() ?? .fajr
-        self.nextPrayer = prayers.currentPrayer(at: Date()) == nil ? .fajr : next
+        let current = prayers.currentPrayer(at: Date())
         
-        self.nextPrayerName = getPrayerName(prayer: next)
+        // Yatsıdan sonra (current == isha) bir sonraki vakit sabah namazıdır (fajr)
+        let nextPrayerType = (current == nil || current == .isha) ? .fajr : next
+        
+        // Hedef saati al
+        var targetDate = prayers.time(for: nextPrayerType)
+        
+        // DÜZELTME:
+        // Eğer hedef saat şu andan küçükse (yani geçmişteyse),
+        // bu demektir ki o vakit YARININ vaktidir.
+        // Örn: Şu an saat 22:00, İmsak 06:00. Kod bunu "Bu sabahın 06:00'sı" sanıyor.
+        // Biz ona "Hayır, 1 gün ekle" diyoruz.
+        if targetDate < Date() {
+            targetDate = targetDate.addingTimeInterval(86400) // 24 Saat ekle (Saniye cinsinden)
+        }
+        
+        self.nextPrayerDate = targetDate
+        
+        // İsim ve Saat Güncellemesi
+        self.nextPrayerName = getPrayerName(prayer: nextPrayerType)
         
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        let time = prayers.time(for: next)
-        self.nextPrayerTime = formatter.string(from: time)
+        self.nextPrayerTime = formatter.string(from: targetDate) // targetDate kullanıyoruz
         
         // Listeyi Doldur
         let allPrayers: [Prayer] = [.fajr, .sunrise, .dhuhr, .asr, .maghrib, .isha]
         self.prayersList = allPrayers.map { prayer in
-            let pTime = prayers.time(for: prayer)
-            let isNext = (prayer == next)
-            
+            let time = prayers.time(for: prayer)
             return PrayerRowData(
                 name: getPrayerName(prayer: prayer),
-                time: formatter.string(from: pTime),
+                time: formatter.string(from: time),
                 icon: getIcon(prayer: prayer),
-                isNext: isNext
+                isNext: (prayer == nextPrayerType)
             )
         }
+        
+        // Geri sayımı hemen tetikle
+        updateCountdown()
     }
     
     func startTimer() {
@@ -84,17 +96,32 @@ class HomeViewModel: ObservableObject {
     }
     
     func updateCountdown() {
-        // Hesaplama için son kullanılan koordinat lazım ama şimdilik Timer sadece görseli güncelliyor
+        guard let targetDate = nextPrayerDate else { return }
+        
+        let diff = targetDate.timeIntervalSince(Date())
+        
+        if diff > 0 {
+            let hours = Int(diff) / 3600
+            let minutes = (Int(diff) % 3600) / 60
+            let seconds = Int(diff) % 60
+            self.timeLeft = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            // Eğer süre bittiyse (0 olduysa), hemen verileri yenile ki
+            // "Vakit Girdi" yazmasın, sıradaki vakte geçsin.
+            if let loc = locationManager.userLocation {
+                updatePrayerData(coordinate: loc.coordinate)
+            }
+        }
     }
     
     func getPrayerName(prayer: Prayer) -> String {
         switch prayer {
-        case .fajr: return "prayer_fajr"
-        case .sunrise: return "prayer_sunrise"
-        case .dhuhr: return "prayer_dhuhr"
-        case .asr: return "prayer_asr"
-        case .maghrib: return "prayer_maghrib"
-        case .isha: return "prayer_isha"
+        case .fajr: return "İmsak"
+        case .sunrise: return "Güneş"
+        case .dhuhr: return "Öğle"
+        case .asr: return "İkindi"
+        case .maghrib: return "Akşam"
+        case .isha: return "Yatsı"
         }
     }
     
@@ -108,12 +135,4 @@ class HomeViewModel: ObservableObject {
         case .isha: return "moon.stars.fill"
         }
     }
-}
-
-struct PrayerRowData: Identifiable {
-    let id = UUID()
-    let name: String
-    let time: String
-    let icon: String
-    let isNext: Bool
 }

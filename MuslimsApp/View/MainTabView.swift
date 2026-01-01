@@ -1,55 +1,38 @@
 import SwiftUI
 
 struct MainTabView: View {
-    // Seçili sekmeyi hafızada tutmak için State
-    @State private var selectedTab: Int = 0
+    // Seçili sekmeyi takip etmek için
+    @State private var selectedTab = 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
             
-            // 1. Ana Sayfa Sekmesi
-            HomeView()
+            // 1. Ana Sayfa (MainTabView DEĞİL, HomeView olacak!)
+            HomeView() // ✅ DOĞRUSU BU!
                 .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("tab_home") // Localizable anahtar
+                    Label("Ana Sayfa", systemImage: "house.fill")
                 }
                 .tag(0)
             
-            // 2. Kur'an Sekmesi
-            QuranView()
+            // 2. Kıble Sayfası
+            QiblaView() // ✅ Yorum satırından çıkardık
                 .tabItem {
-                    Image(systemName: "book.fill")
-                    Text("tab_quran")
+                    Label("Kıble", systemImage: "safari.fill")
                 }
                 .tag(1)
             
-            // 3. Kıble Sekmesi
-            QiblaView()
+            // 3. Ayarlar
+            Text("Ayarlar Sayfası")
                 .tabItem {
-                    Image(systemName: "safari.fill") // Pusula ikonu
-                    Text("tab_qibla")
+                    Label("Ayarlar", systemImage: "gearshape.fill")
                 }
                 .tag(2)
-            
-            // 4. Ayarlar Sekmesi
-            SettingsView()
-                .tabItem {
-                    Image(systemName: "gearshape.fill")
-                    Text("tab_settings")
-                }
-                .tag(3)
         }
-        // Tab Bar'ın rengini belirginleştirelim
-        .tint(.indigo)
+        // Menü rengini belirgin yapalım
+        .accentColor(.indigo)
     }
 }
 
-#Preview { //ikili ön izleme 
-    VStack {
-        MainTabView()
-            .environment(\.locale, .init(identifier: "tr"))
-        
-        MainTabView()
-            .environment(\.locale, .init(identifier: "ar"))
-    }
+#Preview {
+    MainTabView()
 }
