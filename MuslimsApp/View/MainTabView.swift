@@ -7,15 +7,14 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             
-            // 1. Ana Sayfa (MainTabView DEĞİL, HomeView olacak!)
-            HomeView() // ✅ DOĞRUSU BU!
+    
+            HomeView()
                 .tabItem {
                     Label("Ana Sayfa", systemImage: "house.fill")
                 }
                 .tag(0)
             
-            // 2. Kıble Sayfası
-            QiblaView() // ✅ Yorum satırından çıkardık
+            QiblaView()
                 .tabItem {
                     Label("Kıble", systemImage: "safari.fill")
                 }
@@ -28,7 +27,7 @@ struct MainTabView: View {
                 }
                 .tag(2)
         }
-        // Menü rengini belirgin yapalım
+        // Menü rengini belirgin yapmalıyız
         .accentColor(.indigo)
     }
 }

@@ -1,91 +1,89 @@
 import SwiftUI
 import CoreLocation
-import Adhan // Kabe açısını hesaplamak için şart!
+import Adhan
 
 struct QiblaView: View {
-    
-    // 1. Pusula yöneticimizi çağırıyoruz (Telefonun yönünü dinlemek için)
     @StateObject var compassManager = CompassManager()
-    
-    // 2. Konum yöneticimizi çağırıyoruz (Nerede olduğumuzu bilmek için)
-    // Not: Normalde bunu HomeView'dan da alabilirdik ama şimdilik basit olsun diye yeni açtık.
     @StateObject var locationManager = LocationManager()
     
     var body: some View {
-        VStack {
-            // Başlık
-            Text("Kıble Pusulası")
-                .font(.title)
-                .bold()
-                .padding(.top, 50)
+        ZStack {
+           
+            LinearGradient(colors: [Color.black.opacity(0.8), Color.indigo.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
             
-            if let userLocation = locationManager.userLocation {
-                // Konum varsa hesaplamaları yap
-                
-                // A. Kabe'nin açısını hesapla (Adhan kütüphanesi sağ olsun)
-                let qiblaAngle = getQiblaDirection(at: userLocation.coordinate)
-                
-                // B. Pusulanın dönmesi gereken açıyı bul
-                // (Kabe Açısı - Telefonun Baktığı Yön)
-                let rotation = qiblaAngle - compassManager.heading
+            VStack {
+               
+                Text("Kıble Bulucu")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.white)
+                    .padding(.top, 40)
                 
                 Spacer()
                 
-                ZStack {
-                    // 1. Pusula Kadranı (Sabit durur veya süs olarak döner)
-                    Image(systemName: "circle")
-                        .resizable()
-                        .frame(width: 300, height: 300)
-                        .foregroundColor(.gray.opacity(0.3))
-                    
-                    // 2. Kabe İkonu (Kabe'nin olduğu yönü gösterir)
-                    // Bu ikon sürekli Kabe'yi gösterecek şekilde dönecek
-                    VStack {
-                        Image(systemName: "location.north.circle.fill") // Ok işareti
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                            .foregroundColor(.indigo) // Kabe yönü rengi
+                if let userLocation = locationManager.userLocation {
+                    let qiblaAngle = getQiblaDirection(at: userLocation.coordinate)
+                   
+                    let rotation = qiblaAngle - compassManager.heading
+            
+                    ZStack {
                         
-                        Text("Kabe")
-                            .font(.caption)
-                            .bold()
-                            .padding(.top, 5)
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 10)
+                            .frame(width: 300, height: 300)
+                        
+                        // İç Çember (Kadran)
+                        Image(systemName: "safari.fill") // Pusula ikonu
+                            .resizable()
+                            .foregroundColor(.white.opacity(0.2))
+                            .frame(width: 280, height: 280)
+                        
+                        
+                        VStack {
+                            
+                            Image(systemName: "location.north.fill")
+                                .resizable()
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(.yellow) // Altın sarısı ok
+                                .shadow(color: .yellow, radius: 10) // Parlama efekti
+                            
+                            Spacer()
+                                .frame(height: 200) // Oku merkezin dışına itmek için boşluk
+                        }
+                        .rotationEffect(.degrees(rotation)) // DÖNME HAREKETİ
+                        .animation(.easeInOut(duration: 0.2), value: rotation)
                     }
-                    .rotationEffect(.degrees(rotation)) // ✨ İŞTE SİHİR BURADA!
-                    .animation(.easeInOut, value: rotation) // Yumuşak dönsün
-                }
-                
-                Spacer()
-                
-                // Bilgi Kartı
-                VStack(spacing: 10) {
-                    Text("Şehir: \(locationManager.city)")
-                        .font(.headline)
                     
-                    Text("Kıble Açısı: \(Int(qiblaAngle))°")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.bottom, 50)
-                
-            } else {
-                // Konum yoksa uyarı göster
-                VStack {
                     Spacer()
+                    
+             
+                    VStack(spacing: 5) {
+                        Text(locationManager.city)
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.white)
+                        
+                        Text("Kabe Açısı: \(Int(qiblaAngle))°")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.bottom, 50)
+                    
+                } else {
+  
                     ProgressView()
-                    Text("Konum bekleniyor...")
-                        .padding(.top)
-                    Spacer()
+                        .tint(.white)
+                        .scaleEffect(1.5)
                 }
             }
         }
     }
     
-    // Yardımcı Fonksiyon: Adhan kütüphanesini kullanarak Kabe açısını bulur
     func getQiblaDirection(at coordinate: CLLocationCoordinate2D) -> Double {
         let coordinates = Coordinates(latitude: coordinate.latitude, longitude: coordinate.longitude)
         let qibla = Qibla(coordinates: coordinates)
-        return qibla.direction // Bize derece cinsinden yönü verir (Örn: 165.4)
+        return qibla.direction
     }
 }
 
