@@ -6,6 +6,7 @@ import Adhan
 struct HomeView: View {
     // Beyni (ViewModel) burada çağırıyoruz
     @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject var notificationManager = NotificationManager.shared
     
     var body: some View {
         NavigationStack {
@@ -94,7 +95,12 @@ struct HomeView: View {
                     Spacer()
                 }
                 .padding(.top)
+           
             }
+            .onAppear{
+                notificationManager.requestAuthorization()
+            }
+           
         }
     }
 }
